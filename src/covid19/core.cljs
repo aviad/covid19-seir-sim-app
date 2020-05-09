@@ -127,34 +127,12 @@
           (rf/dispatch [:sim-state-change
                        {:g new-state :history updated-history}]))))))
 
-(defn results
-  []
-  [:section#Results
-   [:h2 "Results"]
-   [:figure.fullwidth
-    [:div#embed-lines]
-    [:div#embed-bars]
-    [:div#after-embed
-     (when-let [history (:history @(rf/subscribe [:sim-state]))]
-       (when (or (>= (count history) 300)
-                 (zero? (mod (count history) 10)))
-         (vega/embed
-          "#embed-bars",
-          (covid19.plot-sim/vglite-stacked-bar (flatten history)))
-         (vega/embed
-          "#embed-lines",
-          (covid19.plot-sim/vglite-2-row-line-charts
-           (flatten history)
-           @(rf/subscribe [:n-nodes]))))
-       (str "STEP: " (dec (count history))))]]])
-
-
 (defn general-intro
   []
   [:section#general-intro
    [:h2 "Introduction"]
    [:p [:span.newthought "The article has an agent-based simulation"]
-    " of COVID-19 on a human-like connections network. This page allows you "
+    " of COVID-19 spreading on a human-like connections network. This page allows you "
     "to experiment with this simulation, adjusting some of its parameters. "
     "It is creating a network just like the one in the "
     [:a {:href "https://www.medrxiv.org/content/10.1101/2020.04.30.20081828v1"} "article"]
@@ -164,8 +142,14 @@
     [:input#article-bib.margin-toggle {:type :checkbox}]
     [:span.sidenote "Reich, O., Shalev, G., and Kalvari, T. 2020. "
      "Modeling COVID-19 on a network: super-spreaders, testing and containment. "
-     "http://dx.doi.org/10.1101/2020.04.30.20081828."]
-    " or open an issue on Github."]])
+     [:a {:href "http://dx.doi.org/10.1101/2020.04.30.20081828"}] "."]
+    " or "
+    [:a {:href "https://github.com/ofir-reich/seir-graph"}
+     "read the original python code "]
+    "or "
+    [:a {:href "https://github.com/aviad/covid19-seir-sim-app/issues"}
+     "open an issue on github for this webpage"]
+    "."]])
 
 (defnp simulation
   []
@@ -182,7 +166,8 @@
                          :value @(rf/subscribe [:n-nodes])
                          :step 10
                          :on-change #(rf/dispatch
-                                      [:n-nodes-change (-> % .-target .-value)])}]
+                                      [:n-nodes-change (-> % .-target .-value)])
+                         }]
     "Number of nodes: " @(rf/subscribe [:n-nodes])]
    [:div [:input {:type :range :min 0.1 :max 1 :name "slider"
                   :value @(rf/subscribe [:gamma])
@@ -216,6 +201,45 @@
      "START!"]]
    [hidden-run-simulation]])
 
+(defn results
+  []
+  [:section#Results
+   [:h2 "Results"]
+   [:figure.fullwidth
+    [:div#embed-lines]
+    [:div#embed-bars]
+    [:div#after-embed
+     (when-let [history (:history @(rf/subscribe [:sim-state]))]
+       (when (or (>= (count history) 300)
+                 (zero? (mod (count history) 10)))
+         (vega/embed
+          "#embed-bars",
+          (covid19.plot-sim/vglite-stacked-bar (flatten history)))
+         (vega/embed
+          "#embed-lines",
+          (covid19.plot-sim/vglite-2-row-line-charts
+           (flatten history)
+           @(rf/subscribe [:n-nodes]))))
+       (str "STEP: " (dec (count history))))]]])
+
+(defn epilogue
+  []
+  [:section#epilogue
+   [:h2 "Epilogue"]
+   [:p [:span.newthought "This webpage was created "]
+    "with "
+    [:a {:href "https://clojurescript.org/"} "clojurescript"]
+    ", "
+    [:a {:href "https://github.com/Day8/re-frame"} "re-frame"]
+    ", "
+    [:a {:href "https://vega.github.io/vega-lite/"} "vega-lite"]
+    ", "
+    [:a {:href "https://shadow-cljs.org/"} "shadow-cljs"]
+    " and "
+    [:a {:href "https://github.com/Day8/re-frame"} "tufte-css"]
+    "."]
+   [:p "It brought me joy."]])
+
 (defn ui
   []
   [:article
@@ -223,7 +247,8 @@
    [:p.subtitle "In-browser demo of the " [:a {:href "https://www.medrxiv.org/content/10.1101/2020.04.30.20081828v1"} "article"] " by Reich et. al."]
    [general-intro]
    [simulation]
-   [results]])
+   [results]
+   [epilogue]])
 
 
 ;; -- Entry Point -------------------------------------------------------------
