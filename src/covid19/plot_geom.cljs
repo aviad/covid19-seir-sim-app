@@ -1,5 +1,5 @@
 ;; This file is unused, kept here for replacing vega-lite in the future
-(ns simple.plot-geom
+(ns covid19.plot-geom
   (:require [thi.ng.geom.viz.core :as viz]
             [thi.ng.geom.svg.core :as svg]
             [thi.ng.color.core :as col]

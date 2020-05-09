@@ -1,37 +1,38 @@
-(ns simple.simulation
+(ns covid19.simulation
   (:require [loom.attr]
-            ;; [loom io]
             [loom.graph :refer [nodes]]
-            ;; [ubergraph.core :as uber]
             #?(:cljs ["jstat" :as jstat]
                :clj [incanter.distributions :as dist])
-            #?(:cljs [simple.plot-geom :as plot])
+            #?(:cljs [covid19.plot-geom :as plot])
+            [taoensso.tufte :as tufte :refer (defnp p profiled profile)]))
 
-            [taoensso.tufte :as tufte :refer (defnp p profiled profile)]
-
-            ))
-
+;; To understand what is going on, start from `simulation-step` and `initialize`
 
 (defnp gen-neighbors
   [node all-nodes degree]
-  (let [neighbors (p :rand-nth (repeatedly degree #(rand-nth all-nodes)))
-        ;; neighbors (p :gen-neighbors-take (take degree (p :shuffle (shuffle (p :remove (remove #{node} all-nodes))))))
-        ]
+  ;; ensure all-nodes support random-access
+  {:pre [(vector? all-nodes)]}
+  (let [neighbors (p :rand-nth (repeatedly degree #(rand-nth all-nodes)))]
     (for [neighbor neighbors] [node neighbor])))
+
+(defn- mean
+  [& nums]
+  (/ (reduce + nums) (count nums)))
 
 (defn- gen-degrees
   "X = (1 / (random ^ gamma)) - 1
   M = mean(X)
   Y = X / M
+  ; divided mean_degree by 2 since this is an undirected graph
   Z = min_degree + Y * ((mean_degree / 2) - min_degree)
-  ; divided by 2 since this is an undirected graph
-  D = round(Z) / 2
-  "
+  D = round(Z)"
   [^long nodes-n ^long mean-degree ^double gamma]
   {:pre [(<= 0 gamma 1)
          (pos? mean-degree)
          (pos? nodes-n)]
-   :post [(<= 2 (apply min %))]}
+   :post [(<= 2 (apply min %))
+          ;; make sure we're in the right area with actual generated degrees
+          (<= (dec mean-degree) (* 2 (apply mean %)) (inc mean-degree))]}
   (let [min-degree 2                 ;; min-degree is 2 HARD-CODED
         Xs (for [_ (range nodes-n)]
              (dec (/ 1 (Math/pow (rand) gamma))) )
@@ -45,8 +46,8 @@
   [g mean-degree gamma]
   (let [g-nodes (p :nodes-g (vec (nodes g)))
         degrees (p :gen-degrees (gen-degrees (count g-nodes) mean-degree gamma))
-        edges (p :mapcat-gen-neighbors (mapcat gen-neighbors g-nodes (repeat g-nodes) degrees)) ; dividing degrees by 2 since this is a non-directed graph
-        ]
+        edges (p :mapcat-gen-neighbors
+                 (mapcat gen-neighbors g-nodes (repeat g-nodes) degrees))]
     (p :add-edges* (loom.graph/add-edges* g edges))))
 
 (defnp incubation-time
@@ -114,10 +115,6 @@
                g
                new-infected))))
 
-(defnp parallel-infect
-  [g sources infection-prob]
-  "TODO?")
-
 (defnp infection-step
   "infection_step (S -> E):
   Each non-Quarantined Infected or Exposed node (in the final 2
@@ -131,14 +128,13 @@
         prob-infected-by-I 0.0044       ; 0.022 per day, 5 steps per day
         EIs (p :nodes-by-state-EI (nodes-by-state g :EI))
         prob-infected-by-EI (/ prob-infected-by-I 2)
-        g1 (p :infect-Is (infect g Is prob-infected-by-I))
-        g2 (p :infect-EIs (infect g1 EIs prob-infected-by-EI))
+        ;; to profile: uncomment g1, g2 and replace the return value with g2
+        ;; g1 (p :infect-Is (infect g Is prob-infected-by-I))
+        ;; g2 (p :infect-EIs (infect g1 EIs prob-infected-by-EI))
         ]
-    g2                                  ;fixme: remove g1, g2, return below
-
-    ;; (-> g
-    ;;     (infect Is prob-infected-by-I)
-    ;;     (infect EIs prob-infected-by-EI))
+    (-> g
+        (infect Is prob-infected-by-I)
+        (infect EIs prob-infected-by-EI))
     ))
 
 (defnp incubation-step
@@ -164,22 +160,20 @@
 
 (defnp testing-step
   [g]
-  ;; FIXME: testing is probability-sampled, not by share
-  (let [{:keys [test-symptomatic share-tested n-nodes]} g
-        not-tested (fn [node] (nil? (loom.attr/attr g node :TP)))
-        population (filter not-tested
+  (let [{:keys [test-symptomatic prob-tested-daily n-nodes]} g
+        can-be-tested (fn [node] (nil? (loom.attr/attr g node :TP)))
+        population (filter can-be-tested
                     (if test-symptomatic
                       (concat (nodes-by-state g :EI) (nodes-by-state g :I))
                       (nodes g)))
-        n-tested (Math/floor (* 0.2 share-tested (count population)))
-        _ (prn :n-tested n-tested :count-pop (count population) :share-tested share-tested)
-        tested (take n-tested (distinct (repeatedly #(rand-nth population))))]
+        test-prob (/ prob-tested-daily 5)   ; per simulation step.
+        tested (filter #(< (rand) test-prob) population)]
     (if test-symptomatic
       tested
       (filter (fn [node] (#{:I :EI} (loom.attr/attr g node :state))) tested))))
 
 (defnp testing-and-quarantine-step
-  ;; FIXME: to model quarantine of non TP nodes ("contact tracing") -
+  ;; TODO: to model quarantine of non TP nodes ("contact tracing") -
   ;; add :Q attr to nodes
   "testing_step (update TP):
    A test is positive if a node is either Exposed or Infectious.
@@ -203,7 +197,6 @@
   [g]
   (let [step (:step g)
         new-TPs (testing-step g)
-        _ (prn (count new-TPs))
         Qs (filter (fn [[node attrs]] (:TP attrs)) (:attrs g))
         ;; S-and-Q-time-ended (map first
         ;;                         (filter
@@ -233,19 +226,19 @@
     (loom.attr/add-attr-to-nodes g :state :R recovered)))
 
 (defnp initialize
-  [{:keys [n-nodes mean-degree gamma test-symptomatic share-tested]
+  [{:keys [n-nodes mean-degree gamma test-symptomatic prob-tested-daily]
     :or {n-nodes 100000
          mean-degree 20
          gamma 0.4
          test-symptomatic true
-         share-tested 0.3}}]
+         prob-tested-daily 0.1}}]
   (->
    (apply loom.graph/graph (range n-nodes))
    (loom.attr/add-attr-to-all :state :S)    ; initially: all are susceptible
    (connect mean-degree gamma)
    (random-infect 100)
    (random-expose 145)
-   (assoc :step 0 :test-symptomatic test-symptomatic :share-tested share-tested)))
+   (assoc :step 0 :test-symptomatic test-symptomatic :prob-tested-daily prob-tested-daily)))
 
 (defnp simulation-step
   [g]
@@ -261,42 +254,20 @@
   (let [attrs (vals (:attrs g))
         freqs (frequencies (map :state attrs))
         {:keys [S E EI I R] :or {S 0 E 0 EI 0 I 0 R 0}} freqs
-        E (+ E EI)
-        Q (count (filter :TP attrs))]                     ; EI is just for simulation
+        E (+ E EI)                      ; EI is implementation-internal
+        Q (count (filter :TP attrs))]
     [{:state :S :count S :order 4}
      {:state :E :count E :order 3}
      {:state :I :count I :order 2}
      {:state :R :count R :order 1}
      {:state :Q :count Q :order 0}]))
 
-
-
-(tufte/add-basic-println-handler! {})
-(defnp benchmark-simulation
-  []
-  (loop [g (initialize {:n-nodes 5000})
-         step 0]
-    (when (>= 300 step)
-      (when (zero? (mod step 10)) (prn "recuring" step))
-      (recur (simulation-step g) (inc step)))))
-
-;; (defnp do-graph
-;;   [n-nodes mean-degree gamma]
-;;   (let [g (p :loom-graph (apply loom.graph/graph (range n-nodes)))]
-;;     (->
-;;         (p :add-attr-to-all (loom.attr/add-attr-to-all g :state :S))    ; initially: all are susceptible
-;;         (p :connect (connect mean-degree gamma))
-;;         (p :infect (random-infect 100))
-;;         (p :expose (random-expose 145))
-;;         (p :step (assoc :step 0)))))
-;; (profile {} (dotimes [_ 2]
-;;               (let [;; g1 (p :loom-graph-10k (apply loom.graph/graph (range 10000)))
-;;                     ;; g2 (p :add-attr-to-all (loom.attr/add-attr-to-all g1 :state :S))
-;;                     ;; g3 (p :connect (connect g2 20 0.2))
-;;                     ;; g4 (p :infect (random-infect g3 100))
-;;                     ;; g5 (p :expose (random-expose g4 145))
-;;                     ;; g6 (p :step (assoc g5 :step 0))
-;;                     _ (initialize {:n-nodes 10000})
-;;                     ]
-;;                 ;; (p :full-sim (reduce (fn [g _] (simulation-step g)) g6 (range 150)))
-;;                 :ok)))
+(comment
+  (tufte/add-basic-println-handler! {})
+  (defnp benchmark-simulation
+    []
+    (loop [g (initialize {:n-nodes 5000})
+           step 0]
+      (when (>= 300 step)
+        (when (zero? (mod step 10)) (prn "recuring" step))
+        (recur (simulation-step g) (inc step))))))

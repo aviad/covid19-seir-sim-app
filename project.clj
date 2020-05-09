@@ -31,18 +31,15 @@
                                     "resources/public/js"]
 
   :shadow-cljs {:nrepl  {:port 8777}
-
                 :builds {:client {:target     :browser
                                   :output-dir "resources/public/js"
-                                  :modules    {:client {:init-fn simple.core/run}}
+                                  :modules    {:client {:init-fn covid19.core/run}}
                                   :devtools   {:http-root "resources/public"
                                                :http-port 8280}}
                          :mobile {:target     :react-native
                                   :output-dir "resources/public/js"
-                                  :modules    {:mobile {:init-fn simple.core/run}}
+                                  :modules    {:mobile {:init-fn covid19.core/run}}
                                   :devtools   {:http-root "resources/public"
-                                               :http-port 8280}}}
-                ;; :npm-deps [["jstat" "1.9.3"]] ;; not working, see deps.cljs
-                }
+                                               :http-port 8280}}}}
 
   :aliases {"dev-auto" ["shadow" "watch" "client"]})
