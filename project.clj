@@ -7,7 +7,7 @@
                                org.clojure/google-closure-library-third-party]]
                  [thheller/shadow-cljs      "2.8.83"]
                  [reagent                   "0.10.0"]
-                 [re-frame                  "RELEASE"]
+                 [re-frame                  "0.12.0"]
 
                  [thi.ng/geom "1.0.0-RC4"]
                  [aysylu/loom "1.0.2"]
