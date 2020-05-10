@@ -11,17 +11,6 @@
 
 ;; -- Domino 1 - Event Dispatch -----------------------------------------------
 
-(defn dispatch-timer-event
-  []
-  (let [now (js/Date.)]
-    (rf/dispatch [:timer now])))  ;; <-- dispatch used
-
-;; Call the dispatching function every second.
-;; `defonce` is like `def` but it ensures only one instance is ever
-;; created in the face of figwheel hot-reloading of this file.
-(defonce do-timer (js/setInterval dispatch-timer-event 1000))
-
-
 ;; -- Domino 2 - Event Handlers -----------------------------------------------
 
 (rf/reg-event-db              ;; sets up initial application state
@@ -135,14 +124,18 @@
     " of COVID-19 spreading on a human-like connections network. This page allows you "
     "to experiment with this simulation, adjusting some of its parameters. "
     "It is creating a network just like the one in the "
-    [:a {:href "https://www.medrxiv.org/content/10.1101/2020.04.30.20081828v1"} "article"]
+    [:a {:href "https://www.medrxiv.org/content/10.1101/2020.04.30.20081828v1"
+         :target "_blank"
+         :rel "noreferrer noopener"}
+     "article"]
     ", and simulates the disease spreading on that network."]
    [:p "For details, read the article"
     [:label.margin-toggle.sidenote-number {:for :article-bib}]
     [:input#article-bib.margin-toggle {:type :checkbox}]
     [:span.sidenote "Reich, O., Shalev, G., and Kalvari, T. 2020. "
      "Modeling COVID-19 on a network: super-spreaders, testing and containment. "
-     [:a {:href "http://dx.doi.org/10.1101/2020.04.30.20081828"}] "."]
+     [:a {:href "https://dx.doi.org/10.1101/2020.04.30.20081828"}
+      "https://dx.doi.org/10.1101/2020.04.30.20081828"] "."]
     " or "
     [:a {:href "https://github.com/ofir-reich/seir-graph"}
      "read the original python code "]
@@ -244,7 +237,11 @@
   []
   [:article
    [:h1 "Modeling COVID-19 on a network: super-spreaders, testing and containment"]
-   [:p.subtitle "In-browser demo of the " [:a {:href "https://www.medrxiv.org/content/10.1101/2020.04.30.20081828v1"} "article"] " by Reich et. al."]
+   [:p.subtitle "In-browser demo of the "
+    [:a {:href "https://www.medrxiv.org/content/10.1101/2020.04.30.20081828v1"
+         :target "_blank"
+         :rel "noreferrer noopener"}
+     "article by Reich et. al."]]
    [general-intro]
    [simulation]
    [results]
