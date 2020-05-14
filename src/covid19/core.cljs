@@ -21,7 +21,8 @@
      :mean-degree 20
      :sim-state nil
      :prob-tested-daily 0.02
-     :test-symptomatic true}))
+     :test-symptomatic true
+     :saved-simulations []}))
 
 (rf/reg-event-db                ;; usage:  (dispatch [:n-nodes-change 0.123])
  :n-nodes-change
@@ -64,6 +65,13 @@
  (fn [db [_ new-state]]
    (assoc db :sim-state new-state)))
 
+(rf/reg-event-db
+ :save-simulation
+ (fn [db [_ sim-state]]
+   (-> db
+       (update :saved-simulations conj sim-state)
+       (assoc :sim-state nil))))
+
 ;; -- Domino 4 - Query  -------------------------------------------------------
 (rf/reg-sub
  :n-nodes
@@ -100,21 +108,27 @@
  (fn [db _]
    (:start-simulation db)))
 
+(rf/reg-sub
+ :saved-simulations
+ (fn [db _]
+   (:saved-simulations db)))
+
 ;; -- Domino 5 - View Functions ----------------------------------------------
 
 (defnp hidden-run-simulation
   []
   (when-let [sim-state @(rf/subscribe [:sim-state])]
     (when-let [history (:history sim-state)]
-      (when (>= 300 (count history))
+      (if (>= 300 (count history))
         (let [new-state (simulation-step (:g sim-state))
-             step-results (flatten (map assoc
-                                        (graph->counts new-state)
-                                        (repeat :step)
-                                        (repeat (count history))))
+              step-results (flatten (map assoc
+                                         (graph->counts new-state)
+                                         (repeat :step)
+                                         (repeat (count history))))
               updated-history (conj history step-results)]
           (rf/dispatch [:sim-state-change
-                       {:g new-state :history updated-history}]))))))
+                        {:g new-state :history updated-history}]))
+        (rf/dispatch [:save-simulation sim-state])))))
 
 (defn general-intro
   []
@@ -194,26 +208,71 @@
      "START!"]]
    [hidden-run-simulation]])
 
+(defn params-table
+  [params]
+  [:table
+   [:thead
+    [:tr [:th "Parameter"] [:th "Value"]]]
+   [:tbody
+    [:tr [:td "Number of nodes"] [:td (:n-nodes params)]]
+    [:tr [:td "Gamma"] [:td (:gamma params)]]
+    [:tr [:td "Mean degree"] [:td (:mean-degree params)]]
+    [:tr [:td "Daily testing probability"] [:td (:prob-tested-daily params)]]
+    [:tr [:td "Test only symptomatic"] [:td (str (:test-symptomatic params))]]]])
+
+(defn saved-simulations
+  [sims]
+  [:div
+   (for [sim-i (reverse (range (count sims)))
+         :let [sim (sims sim-i)
+               history (flatten (:history sim))
+               g (:g sim)
+               display-idx (inc sim-i)
+               embed-lines-id (str "#embed-lines-" display-idx)
+               embed-bars-id (str "#embed-bars-" display-idx)]]
+     ^{:key (str "saved-simulation-" display-idx)}
+     [:div
+      [:h3 "Simulation " display-idx]
+      (params-table g)
+      [:figure.fullwidth
+       [(keyword (str "div" embed-lines-id))]
+       [(keyword (str "div" embed-bars-id))]
+       [(keyword (str "div#do-embed-" display-idx))
+        (do
+          (vega/embed
+           embed-bars-id
+           (covid19.plot-sim/vglite-stacked-bar history))
+          (vega/embed
+           embed-lines-id
+           (covid19.plot-sim/vglite-2-row-line-charts history (:n-nodes g)))
+          "")]]])])
+
 (defn results
   []
   [:section#Results
    [:h2 "Results"]
-   [:figure.fullwidth
-    [:div#embed-lines]
-    [:div#embed-bars]
-    [:div#after-embed
-     (when-let [history (:history @(rf/subscribe [:sim-state]))]
-       (when (or (>= (count history) 300)
-                 (zero? (mod (count history) 10)))
-         (vega/embed
-          "#embed-bars",
-          (covid19.plot-sim/vglite-stacked-bar (flatten history)))
-         (vega/embed
-          "#embed-lines",
-          (covid19.plot-sim/vglite-2-row-line-charts
-           (flatten history)
-           @(rf/subscribe [:n-nodes]))))
-       (str "STEP: " (dec (count history))))]]])
+   ;; Currently running simulation
+   (when-let [sim-state @(rf/subscribe [:sim-state])]
+     [:div
+      [:h3 "Running simulation"]
+      [params-table (:g sim-state)]
+      [:figure.fullwidth
+       [:div#embed-lines-running]
+       [:div#embed-bars-running]
+       [:div#after-embed
+        (when-let [history (:history sim-state)]
+          (when (or (= (count history) 301)
+                    (zero? (mod (count history) 10)))
+            (vega/embed
+             "#embed-lines-running",
+             (covid19.plot-sim/vglite-2-row-line-charts
+              (flatten history)
+              @(rf/subscribe [:n-nodes])))
+            (vega/embed
+             "#embed-bars-running",
+             (covid19.plot-sim/vglite-stacked-bar (flatten history))))
+          (str "STEP: " (dec (count history))))]]])
+   [saved-simulations @(rf/subscribe [:saved-simulations])]])
 
 (defn epilogue
   []

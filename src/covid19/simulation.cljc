@@ -238,7 +238,12 @@
    (connect mean-degree gamma)
    (random-infect 100)
    (random-expose 145)
-   (assoc :step 0 :test-symptomatic test-symptomatic :prob-tested-daily prob-tested-daily)))
+   (assoc :step 0
+          :test-symptomatic test-symptomatic
+          :prob-tested-daily prob-tested-daily
+          :n-nodes n-nodes
+          :mean-degree mean-degree
+          :gamma gamma)))
 
 (defnp simulation-step
   [g]
