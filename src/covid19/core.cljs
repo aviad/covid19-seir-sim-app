@@ -2,6 +2,7 @@
   (:require [reagent.dom :as dom]
             [re-frame.core :as rf]
             [clojure.string :as str]
+            [clojure.edn :as edn]
             ["jstat" :as jstat]
             ["vega-embed" :as vega]
             [covid19.plot-geom :as plot-geom]
@@ -10,19 +11,40 @@
             [taoensso.tufte :as tufte :refer (defnp p profiled profile)]))
 
 ;; -- Domino 1 - Event Dispatch -----------------------------------------------
+(defn save-state-to-session-storage
+  "This is to keep the data across refreshing the page."
+  []
+  (rf/dispatch [:save-to-session-storage]))
+
+;; Call the dispatching function every 5 seconds.
+;; `defonce` is like `def` but it ensures only one instance is ever
+;; created in the face of figwheel hot-reloading of this file.
+(defonce save-state-periodically
+  (js/setInterval save-state-to-session-storage 5000))
 
 ;; -- Domino 2 - Event Handlers -----------------------------------------------
 
 (rf/reg-event-db              ;; sets up initial application state
   :initialize                 ;; usage:  (dispatch [:initialize])
   (fn [_ _]                   ;; the two parameters are not important here, so use _
-    {:n-nodes 5000            ;; What it returns becomes the new application state
-     :gamma 0.2
-     :mean-degree 20
-     :sim-state nil
-     :prob-tested-daily 0.02
-     :test-symptomatic true
-     :saved-simulations []}))
+                              ;; What it returns becomes the new application state
+    (if-let [stored-db js/window.sessionStorage.db]
+      (edn/read-string stored-db)
+      {:n-nodes 5000
+       :gamma 0.2
+       :mean-degree 20
+       :sim-state nil
+       :prob-tested-daily 0.02
+       :test-symptomatic true
+       :saved-simulations []})))
+
+(rf/reg-event-db
+ :save-to-session-storage
+ (fn [db]
+   (when db
+     ;; do not save currently running simulation. graph is 1-5 MBs
+     (set! js/window.sessionStorage.db (pr-str (assoc db :sim-state nil))))
+   db))
 
 (rf/reg-event-db                ;; usage:  (dispatch [:n-nodes-change 0.123])
  :n-nodes-change
@@ -53,24 +75,31 @@
  :start-simulation
  (fn [db [_ _]]
    (let [{:keys [n-nodes gamma mean-degree prob-tested-daily test-symptomatic]} db
-         initial-graph (initialize {:n-nodes n-nodes
-                                    :gamma gamma
-                                    :mean-degree mean-degree
-                                    :prob-tested-daily prob-tested-daily
-                                    :test-symptomatic test-symptomatic})]
-    (assoc db :sim-state {:g initial-graph :history []}))))
+         simulation-parameters {:n-nodes n-nodes
+                                :gamma gamma
+                                :mean-degree mean-degree
+                                :prob-tested-daily prob-tested-daily
+                                :test-symptomatic test-symptomatic}
+         initial-graph (initialize simulation-parameters)]
+     (assoc db :sim-state
+            (merge simulation-parameters {:g initial-graph :history []})))))
 
 (rf/reg-event-db
  :sim-state-change
  (fn [db [_ new-state]]
-   (assoc db :sim-state new-state)))
+   (update db :sim-state merge new-state)))
 
 (rf/reg-event-db
  :save-simulation
  (fn [db [_ sim-state]]
    (-> db
-       (update :saved-simulations conj sim-state)
+       (update :saved-simulations conj (dissoc sim-state :g))
        (assoc :sim-state nil))))
+
+(rf/reg-event-db
+ :clear-results
+ (fn [db [_ _]]
+   (assoc db :saved-simulations [])))
 
 ;; -- Domino 4 - Query  -------------------------------------------------------
 (rf/reg-sub
@@ -134,26 +163,27 @@
   []
   [:section#general-intro
    [:h2 "Introduction"]
-   [:p [:span.newthought "The article has an agent-based simulation"]
-    " of COVID-19 spreading on a human-like connections network. This page allows you "
-    "to experiment with this simulation, adjusting some of its parameters. "
-    "It is creating a network just like the one in the "
-    [:a {:href "https://www.medrxiv.org/content/10.1101/2020.04.30.20081828v1"
-         :target "_blank"
-         :rel "noreferrer noopener"}
-     "article"]
-    ", and simulates the disease spreading on that network."]
-   [:p "For details, read the article"
+   [:p [:span.newthought "The article"]
     [:label.margin-toggle.sidenote-number {:for :article-bib}]
     [:input#article-bib.margin-toggle {:type :checkbox}]
     [:span.sidenote "Reich, O., Shalev, G., and Kalvari, T. 2020. "
      "Modeling COVID-19 on a network: super-spreaders, testing and containment. "
      [:a {:href "https://dx.doi.org/10.1101/2020.04.30.20081828"}
       "https://dx.doi.org/10.1101/2020.04.30.20081828"] "."]
-    " or "
+    [:span.newthought " models the spread of covid-19"]
+    " using an SEIR agent-based model on a graph, taking into account several important real-life attributes of covid-19: Super-spreaders, realistic epidemiological parameters of the disease, testing and quarantine policies. The findings indicate that mass-testing is much less effective than testing the symptomatic and contact tracing, and some blend of these with social distancing is required to get suppression."]
+   [:p "This page allows you to experiment with this simulation, adjusting some of its parameters. "
+    "It is creating a " [:strong "unique"] " network just like the one in the "
+    [:a {:href "https://www.medrxiv.org/content/10.1101/2020.04.30.20081828v1"
+         :target "_blank"
+         :rel "noreferrer noopener"}
+     "article"]
+    ", and simulates the disease spreading on that network. "]
+   [:p "Try running the simulation several times with the same parameters, to witness the similarities and differences due to randominzation. Then, try adjusting the parameters to investigate different strategies and see their effect on disease spread, seeing which ones lead to containment, and which ones just infect a substantial share of the population."]
+   [:p "For details, read the article, or "
     [:a {:href "https://github.com/ofir-reich/seir-graph"}
-     "read the original python code "]
-    "or "
+     "read the original python code"]
+    ", or "
     [:a {:href "https://github.com/aviad/covid19-seir-sim-app/issues"}
      "open an issue on github for this webpage"]
     "."]])
@@ -163,7 +193,7 @@
   [:section#simulation
    [:h2 "Running the simulation"]
    [:p [:span.newthought "To run this simulation"]
-    " simply adjust the parameters, and press the \"START!\" button."
+    " simply adjust the parameters, and press \"START!\" below."
     " This will cause a " [:strong "unique"]
     " random graph to be generated on your browser, and a random simulation "
     "will take place. The simulation state will be displayed on updating "
@@ -200,11 +230,10 @@
              :on-change #(rf/dispatch
                           [:test-symptomatic-change (-> % .-target .-checked)])}]
     [:label {:for "test-symptomatic"} "Test only symptomatic"]]
-   [:div
-    [:button
+   [:p
+    [:a
      {:on-click #(rf/dispatch [:start-simulation])
-      ;; #(profile {} (covid19.simulation/benchmark-simulation))
-      }
+      :href "#Results"}
      "START!"]]
    [hidden-run-simulation]])
 
@@ -212,13 +241,13 @@
   [params]
   [:table
    [:thead
-    [:tr [:th "Parameter"] [:th "Value"]]]
+    [:tr [:th "Parameter"] [:th ""] [:th "Value"]]]
    [:tbody
-    [:tr [:td "Number of nodes"] [:td (:n-nodes params)]]
-    [:tr [:td "Gamma"] [:td (:gamma params)]]
-    [:tr [:td "Mean degree"] [:td (:mean-degree params)]]
-    [:tr [:td "Daily testing probability"] [:td (:prob-tested-daily params)]]
-    [:tr [:td "Test only symptomatic"] [:td (str (:test-symptomatic params))]]]])
+    [:tr [:td "Number of nodes"] [:td] [:td (:n-nodes params)]]
+    [:tr [:td "Gamma"] [:td] [:td (:gamma params)]]
+    [:tr [:td "Mean degree"] [:td] [:td (:mean-degree params)]]
+    [:tr [:td "Daily testing probability"] [:td] [:td (:prob-tested-daily params)]]
+    [:tr [:td "Test only symptomatic"] [:td] [:td (str (:test-symptomatic params))]]]])
 
 (defn saved-simulations
   [sims]
@@ -226,14 +255,14 @@
    (for [sim-i (reverse (range (count sims)))
          :let [sim (sims sim-i)
                history (flatten (:history sim))
-               g (:g sim)
+               n-nodes (:n-nodes sim)
                display-idx (inc sim-i)
                embed-lines-id (str "#embed-lines-" display-idx)
                embed-bars-id (str "#embed-bars-" display-idx)]]
      ^{:key (str "saved-simulation-" display-idx)}
      [:div
       [:h3 "Simulation " display-idx]
-      (params-table g)
+      (params-table sim)
       [:figure.fullwidth
        [(keyword (str "div" embed-lines-id))]
        [(keyword (str "div" embed-bars-id))]
@@ -244,17 +273,18 @@
            (covid19.plot-sim/vglite-stacked-bar history))
           (vega/embed
            embed-lines-id
-           (covid19.plot-sim/vglite-2-row-line-charts history (:n-nodes g)))
+           (covid19.plot-sim/vglite-2-row-line-charts history n-nodes))
           "")]]])])
 
 (defn results
   []
   [:section#Results
-   [:h2 "Results"]
+   [:h2 "Results "]
+   [:div [:a {:href "#Results" :on-click #(rf/dispatch [:clear-results])} "clear all results"]]
    ;; Currently running simulation
    (when-let [sim-state @(rf/subscribe [:sim-state])]
      [:div
-      [:h3 "Running simulation"]
+      [:h3#running-simulation "Running simulation"]
       [params-table (:g sim-state)]
       [:figure.fullwidth
        [:div#embed-lines-running]
@@ -296,11 +326,12 @@
   []
   [:article
    [:h1 "Modeling COVID-19 on a network: super-spreaders, testing and containment"]
-   [:p.subtitle "In-browser demo of the "
+   [:p.subtitle "Simulate COVID-19 spread according to the "
     [:a {:href "https://www.medrxiv.org/content/10.1101/2020.04.30.20081828v1"
          :target "_blank"
          :rel "noreferrer noopener"}
      "article by Reich et. al."]]
+   [:p [:strong "TL;DR: " [:a {:href "#simulation"} "Go straight to running the simulation"]]]
    [general-intro]
    [simulation]
    [results]

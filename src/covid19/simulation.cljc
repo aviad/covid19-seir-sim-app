@@ -227,9 +227,9 @@
 
 (defnp initialize
   [{:keys [n-nodes mean-degree gamma test-symptomatic prob-tested-daily]
-    :or {n-nodes 100000
+    :or {n-nodes 10000
          mean-degree 20
-         gamma 0.4
+         gamma 0.2
          test-symptomatic true
          prob-tested-daily 0.1}}]
   (->
