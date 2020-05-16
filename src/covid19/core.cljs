@@ -8,7 +8,8 @@
             [covid19.plot-geom :as plot-geom]
             [covid19.plot-sim :as plot-sim]
             [covid19.simulation :refer [initialize simulation-step graph->counts]]
-            [taoensso.tufte :as tufte :refer (defnp p profiled profile)]))
+            ;; [taoensso.tufte :as tufte :refer (defnp p profiled profile)]
+            ))
 
 ;; -- Domino 1 - Event Dispatch -----------------------------------------------
 (defn save-state-to-session-storage
@@ -144,7 +145,7 @@
 
 ;; -- Domino 5 - View Functions ----------------------------------------------
 
-(defnp hidden-run-simulation
+(defn hidden-run-simulation
   []
   (when-let [sim-state @(rf/subscribe [:sim-state])]
     (when-let [history (:history sim-state)]
@@ -188,17 +189,20 @@
      "open an issue on github for this webpage"]
     "."]])
 
-(defnp simulation
+(defn simulation
   []
   [:section#simulation
    [:h2 "Running the simulation"]
    [:p [:span.newthought "To run this simulation"]
-    " simply adjust the parameters, and press \"START!\" below."
+    " simply adjust the parameters, and press the "
+    [:a.monospaced {:href "#adjusting"} "Run"]
+    " button below."
     " This will cause a " [:strong "unique"]
     " random graph to be generated on your browser, and a random simulation "
     "will take place. The simulation state will be displayed on updating "
-    "graphs in the " [:a {:href "#Results"} "results section"]]
-   [:h3 "Adjustable simulation parameters"]
+    "graphs in the " [:a {:href "#Results"} "results section"]
+    ". Scroll down to see previous simulations you ran."]
+   [:h3#adjusting "Adjustable simulation parameters"]
    [:div [:input.slider {:type :range :min 500 :max 20000
                          :value @(rf/subscribe [:n-nodes])
                          :step 10
@@ -230,11 +234,15 @@
              :on-change #(rf/dispatch
                           [:test-symptomatic-change (-> % .-target .-checked)])}]
     [:label {:for "test-symptomatic"} "Test only symptomatic"]]
-   [:p
-    [:a
-     {:on-click #(rf/dispatch [:start-simulation])
-      :href "#Results"}
-     "START!"]]
+   [:div#run-sim-button.myButton
+    {:on-click #(rf/dispatch [:start-simulation])
+     :href "#Results"
+     :height "19em"}
+    "Run "
+    [:img.send-icon
+     {:src "https://metta-code.s3.eu-central-1.amazonaws.com/send.svg"
+      :height "26em"}]
+    ]
    [hidden-run-simulation]])
 
 (defn params-table
