@@ -160,13 +160,13 @@
 
 (defnp testing-step
   [g]
-  (let [{:keys [test-symptomatic prob-tested-daily n-nodes]} g
+  (let [{:keys [test-symptomatic mean-days-to-detection n-nodes]} g
         can-be-tested (fn [node] (nil? (loom.attr/attr g node :TP)))
         population (filter can-be-tested
                     (if test-symptomatic
-                      (concat (nodes-by-state g :EI) (nodes-by-state g :I))
+                      (concat (nodes-by-state g :I))
                       (nodes g)))
-        test-prob (/ prob-tested-daily 5)   ; per simulation step.
+        test-prob (/ 1  (* 5 mean-days-to-detection))   ; per simulation step.
         tested (filter #(< (rand) test-prob) population)]
     (if test-symptomatic
       tested
@@ -226,12 +226,7 @@
     (loom.attr/add-attr-to-nodes g :state :R recovered)))
 
 (defnp initialize
-  [{:keys [n-nodes mean-degree gamma test-symptomatic prob-tested-daily]
-    :or {n-nodes 10000
-         mean-degree 20
-         gamma 0.2
-         test-symptomatic true
-         prob-tested-daily 0.1}}]
+  [{:keys [n-nodes mean-degree gamma test-symptomatic mean-days-to-detection]}]
   (->
    (apply loom.graph/graph (range n-nodes))
    (loom.attr/add-attr-to-all :state :S)    ; initially: all are susceptible
@@ -240,7 +235,7 @@
    (random-expose 145)
    (assoc :step 0
           :test-symptomatic test-symptomatic
-          :prob-tested-daily prob-tested-daily
+          :mean-days-to-detection mean-days-to-detection
           :n-nodes n-nodes
           :mean-degree mean-degree
           :gamma gamma)))

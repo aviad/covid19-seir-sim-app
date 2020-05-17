@@ -35,7 +35,7 @@
        :gamma 0.2
        :mean-degree 20
        :sim-state nil
-       :prob-tested-daily 0.02
+       :mean-days-to-detection 25
        :test-symptomatic true
        :saved-simulations []})))
 
@@ -63,9 +63,9 @@
    (assoc db :mean-degree new-value)))
 
 (rf/reg-event-db
- :prob-tested-daily-change
+ :mean-days-to-detection-change
  (fn [db [_ new-value]]
-   (assoc db :prob-tested-daily new-value)))
+   (assoc db :mean-days-to-detection new-value)))
 
 (rf/reg-event-db
  :test-symptomatic-change
@@ -75,11 +75,11 @@
 (rf/reg-event-db
  :start-simulation
  (fn [db [_ _]]
-   (let [{:keys [n-nodes gamma mean-degree prob-tested-daily test-symptomatic]} db
+   (let [{:keys [n-nodes gamma mean-degree mean-days-to-detection test-symptomatic]} db
          simulation-parameters {:n-nodes n-nodes
                                 :gamma gamma
                                 :mean-degree mean-degree
-                                :prob-tested-daily prob-tested-daily
+                                :mean-days-to-detection mean-days-to-detection
                                 :test-symptomatic test-symptomatic}
          initial-graph (initialize simulation-parameters)]
      (assoc db :sim-state
@@ -119,9 +119,9 @@
    (:mean-degree db)))
 
 (rf/reg-sub
- :prob-tested-daily
+ :mean-days-to-detection
  (fn [db _]
-   (:prob-tested-daily db)))
+   (:mean-days-to-detection db)))
 
 (rf/reg-sub
  :test-symptomatic
@@ -222,12 +222,12 @@
                   :on-change #(rf/dispatch
                                [:mean-degree-change (-> % .-target .-value)])}]
     "Mean degree: " @(rf/subscribe [:mean-degree])]
-   [:div [:input {:type :range :min 0 :max 1 :name "slider"
-                  :value @(rf/subscribe [:prob-tested-daily])
-                  :step 0.01
+   [:div [:input {:type :range :min 0 :max 25 :name "slider"
+                  :value @(rf/subscribe [:mean-days-to-detection])
+                  :step 0.5
                   :on-change #(rf/dispatch
-                               [:prob-tested-daily-change (-> % .-target .-value)])}]
-    "Daily testing probability: " @(rf/subscribe [:prob-tested-daily])]
+                               [:mean-days-to-detection-change (-> % .-target .-value)])}]
+    "Means days for infection detection: " @(rf/subscribe [:mean-days-to-detection])]
    [:div
     [:input {:type :checkbox :name "test-symptomatic"
              :checked @(rf/subscribe [:test-symptomatic])
@@ -254,7 +254,7 @@
     [:tr [:td "Number of nodes"] [:td] [:td (:n-nodes params)]]
     [:tr [:td "Gamma"] [:td] [:td (:gamma params)]]
     [:tr [:td "Mean degree"] [:td] [:td (:mean-degree params)]]
-    [:tr [:td "Daily testing probability"] [:td] [:td (:prob-tested-daily params)]]
+    [:tr [:td "Mean days to detect infected"] [:td] [:td (:mean-days-to-detection params)]]
     [:tr [:td "Test only symptomatic"] [:td] [:td (str (:test-symptomatic params))]]]])
 
 (defn saved-simulations
