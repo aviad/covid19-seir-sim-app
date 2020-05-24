@@ -321,7 +321,7 @@
       [:tr [:td "Means days for infection detection"] [:td] [:td (:mean-days-to-detect-infected params)]])
     [:tr [:td "Test general population"] [:td] [:td (str (:test-everyone? params))]]
     (when (:test-everyone? params)
-      [:tr [:td "No. of tests per 1M people"] [:td] [:td (:tests-per-1m-people params)]])]])
+      [:tr [:td "No. of daily tests per 1M people"] [:td] [:td (:tests-per-1m-people params)]])]])
 
 (defn saved-simulations
   [sims]
