@@ -158,19 +158,35 @@
     (-> (loom.attr/add-attr-to-nodes g :state :EI Es->EIs)
         (loom.attr/add-attr-to-nodes :state :I EIs->Is))))
 
+(defn detect-infected
+  {:pre (:test-symptomatic? g)}
+  [g]
+  (let [{:keys [mean-days-to-detect-infected]} g
+        can-be-tested (fn [node] (nil? (loom.attr/attr g node :TP)))
+        testable-infected (filter can-be-tested (nodes-by-state g :I))
+        detection-prob (/ 1  (* 5 mean-days-to-detect-infected)) ; per simulation step
+        ]
+    (filter #(< (rand) detection-prob) testable-infected)))
+
+(defn detect-from-population
+  {:pre (:test-everyone? g)}
+  [g]
+  (let [{:keys [tests-per-1m-people n-nodes]} g
+        can-be-tested (fn [node] (nil? (loom.attr/attr g node :TP)))
+        testable-nodes (filterv can-be-tested (nodes-by-state g :I))
+        n-tests-per-step (Math/round
+                          (/ tests-per-1m-people (/ 1000000 n-nodes) 5))
+        n-tests-per-step (min n-tests-per-step (count testable-nodes))]
+    (take n-tests-per-step (distinct (repeatedly #(rand-nth testable-nodes))))))
+
 (defnp testing-step
   [g]
-  (let [{:keys [test-symptomatic mean-days-to-detection n-nodes]} g
-        can-be-tested (fn [node] (nil? (loom.attr/attr g node :TP)))
-        population (filter can-be-tested
-                    (if test-symptomatic
-                      (concat (nodes-by-state g :I))
-                      (nodes g)))
-        test-prob (/ 1  (* 5 mean-days-to-detection))   ; per simulation step.
-        tested (filter #(< (rand) test-prob) population)]
-    (if test-symptomatic
-      tested
-      (filter (fn [node] (#{:I :EI} (loom.attr/attr g node :state))) tested))))
+  (let [detected-infected (when (:test-symptomatic? g)
+                            (detect-infected g))
+        ;; TODO: general population testing
+        detected-from-population (when (:test-everyone? g)
+                                           (detect-from-population g))]
+    (concat detected-infected detected-from-population)))
 
 (defnp testing-and-quarantine-step
   ;; TODO: to model quarantine of non TP nodes ("contact tracing") -
@@ -226,19 +242,15 @@
     (loom.attr/add-attr-to-nodes g :state :R recovered)))
 
 (defnp initialize
-  [{:keys [n-nodes mean-degree gamma test-symptomatic mean-days-to-detection]}]
+  [{:keys [n-nodes mean-degree gamma] :as params}]
   (->
    (apply loom.graph/graph (range n-nodes))
    (loom.attr/add-attr-to-all :state :S)    ; initially: all are susceptible
    (connect mean-degree gamma)
    (random-infect 100)
    (random-expose 145)
-   (assoc :step 0
-          :test-symptomatic test-symptomatic
-          :mean-days-to-detection mean-days-to-detection
-          :n-nodes n-nodes
-          :mean-degree mean-degree
-          :gamma gamma)))
+   (merge params)
+   (assoc :step 0)))
 
 (defnp simulation-step
   [g]

@@ -35,8 +35,10 @@
        :gamma 0.2
        :mean-degree 20
        :sim-state nil
-       :mean-days-to-detection 25
-       :test-symptomatic true
+       :test-symptomatic? false
+       :mean-days-to-detect-infected 5
+       :test-everyone? false
+       :tests-per-1m-people 400
        :saved-simulations []})))
 
 (rf/reg-event-db
@@ -63,24 +65,38 @@
    (assoc db :mean-degree new-value)))
 
 (rf/reg-event-db
- :mean-days-to-detection-change
+ :mean-days-to-detect-infected-change
  (fn [db [_ new-value]]
-   (assoc db :mean-days-to-detection new-value)))
+   (assoc db :mean-days-to-detect-infected new-value)))
+
+(rf/reg-event-db
+ :tests-per-1m-people-change
+ (fn [db [_ new-value]]
+   (assoc db :tests-per-1m-people new-value)))
 
 (rf/reg-event-db
  :test-symptomatic-change
  (fn [db [_ new-value]]
-   (assoc db :test-symptomatic new-value)))
+   (assoc db :test-symptomatic? new-value)))
+
+(rf/reg-event-db
+ :test-everyone-change
+ (fn [db [_ new-value]]
+   (assoc db :test-everyone? new-value)))
 
 (rf/reg-event-db
  :start-simulation
  (fn [db [_ _]]
-   (let [{:keys [n-nodes gamma mean-degree mean-days-to-detection test-symptomatic]} db
-         simulation-parameters {:n-nodes n-nodes
-                                :gamma gamma
-                                :mean-degree mean-degree
-                                :mean-days-to-detection mean-days-to-detection
-                                :test-symptomatic test-symptomatic}
+   (let [{:keys [test-symptomatic? test-everyone?]} db
+         ;; if not testing symptomatic, this means an infected node will never
+         ;; be detected, so remove from the parameters. Same goes for testing
+         ;; of the general population
+         simulation-parameters (select-keys db
+                                            [:n-nodes :gamma :mean-degree
+                                             :test-symptomatic?
+                                             (when test-symptomatic? :mean-days-to-detect-infected)
+                                             :test-everyone?
+                                             (when test-everyone? :tests-per-1m-people)])
          initial-graph (initialize simulation-parameters)]
      (assoc db :sim-state
             (merge simulation-parameters {:g initial-graph :history []})))))
@@ -119,14 +135,24 @@
    (:mean-degree db)))
 
 (rf/reg-sub
- :mean-days-to-detection
+ :test-symptomatic?
  (fn [db _]
-   (:mean-days-to-detection db)))
+   (:test-symptomatic? db)))
 
 (rf/reg-sub
- :test-symptomatic
+ :mean-days-to-detect-infected
  (fn [db _]
-   (:test-symptomatic db)))
+   (:mean-days-to-detect-infected db)))
+
+(rf/reg-sub
+ :test-everyone?
+ (fn [db _]
+   (:test-everyone? db)))
+
+(rf/reg-sub
+ :tests-per-1m-people
+ (fn [db _]
+   (:tests-per-1m-people db)))
 
 (rf/reg-sub
  :sim-state
@@ -222,40 +248,80 @@
                   :on-change #(rf/dispatch
                                [:mean-degree-change (-> % .-target .-value)])}]
     "Mean degree: " @(rf/subscribe [:mean-degree])]
-   [:div [:input {:type :range :min 0 :max 25 :name "slider"
-                  :value @(rf/subscribe [:mean-days-to-detection])
-                  :step 0.5
-                  :on-change #(rf/dispatch
-                               [:mean-days-to-detection-change (-> % .-target .-value)])}]
-    "Means days for infection detection: " @(rf/subscribe [:mean-days-to-detection])]
    [:div
     [:input {:type :checkbox :name "test-symptomatic"
-             :checked @(rf/subscribe [:test-symptomatic])
+             :checked @(rf/subscribe [:test-symptomatic?])
              :on-change #(rf/dispatch
                           [:test-symptomatic-change (-> % .-target .-checked)])}]
-    [:label {:for "test-symptomatic"} "Test only symptomatic"]]
-   [:div#run-sim-button.myButton
-    {:on-click #(rf/dispatch [:start-simulation])
-     :href "#Results"
-     :height "19em"}
-    "Run "
-    [:img.send-icon
-     {:src "https://metta-code.s3.eu-central-1.amazonaws.com/send.svg"
-      :height "26em"}]
-    ]
+    [:label {:for "test-symptomatic"} "Test symptomatic?"]]
+   (let [possibly-greyed-div (if @(rf/subscribe [:test-symptomatic?])
+                               :div
+                               :div.greyedOut)]
+     [possibly-greyed-div
+      [:input {:type :range :min 0 :max 25 :name "slider"
+               :value @(rf/subscribe [:mean-days-to-detect-infected])
+               :step 0.5
+               :on-change #(when @(rf/subscribe [:test-symptomatic?])
+                               (rf/dispatch
+                                [:mean-days-to-detect-infected-change
+                                 (-> % .-target .-value)]))}]
+      "Means days for infection detection: " @(rf/subscribe [:mean-days-to-detect-infected])])
+   [:div
+    [:input {:type :checkbox :name "test-everyone"
+             :checked @(rf/subscribe [:test-everyone?])
+             :on-change #(rf/dispatch
+                          [:test-everyone-change (-> % .-target .-checked)])}]
+    [:label {:for "test-everyone"} "Test general population?"]]
+   (let [possibly-greyed-div (if @(rf/subscribe [:test-everyone?])
+                               :div
+                               :div.greyedOut)]
+     [possibly-greyed-div
+      [:input {:type :range :min 0 :max 5000 :name "slider"
+               :value @(rf/subscribe [:tests-per-1m-people])
+               :step 10
+               :on-change #(when @(rf/subscribe [:test-everyone?])
+                            (rf/dispatch
+                             [:tests-per-1m-people-change (-> % .-target .-value)]))}]
+      "Daily tests per 1M people: "
+      @(rf/subscribe [:tests-per-1m-people])])
+
+
+
+   [:p
+    ""
+    [:label.margin-toggle {:for :icon-credit} "&#8853;"]
+    [:input.margin-toggle {:type :checkbox :id :icon-credit}]
+    [:span.marginnote
+     "\"send\" icon by "
+     [:a {:href "https://www.brandeps.com/"} "https://www.brandeps.com/"]
+     ", licensed under "
+     [:a {:href "https://creativecommons.org/licenses/by-sa/4.0/"}
+      "https://creativecommons.org/licenses/by-sa/4.0/"]]
+    [:span#run-sim-button.myButton
+     {:on-click #(rf/dispatch [:start-simulation])
+      :href "#Results"
+      :height "19em"}
+     "Run "
+     [:img.send-icon
+      {:src "https://metta-code.s3.eu-central-1.amazonaws.com/send.svg"
+       :height "26em"}]]]
    [hidden-run-simulation]])
 
 (defn params-table
   [params]
   [:table
    [:thead
-    [:tr [:th "Parameter"] [:th ""] [:th "Value"]]]
+    [:tr [:th "Parameter"] [:th [:span.invisible "..."]] [:th "Value"]]]
    [:tbody
     [:tr [:td "Number of nodes"] [:td] [:td (:n-nodes params)]]
     [:tr [:td "Gamma"] [:td] [:td (:gamma params)]]
     [:tr [:td "Mean degree"] [:td] [:td (:mean-degree params)]]
-    [:tr [:td "Mean days to detect infected"] [:td] [:td (:mean-days-to-detection params)]]
-    [:tr [:td "Test only symptomatic"] [:td] [:td (str (:test-symptomatic params))]]]])
+    [:tr [:td "Test symptomatic"] [:td] [:td (str (:test-symptomatic? params))]]
+    (when (:test-symptomatic? params)
+      [:tr [:td "Means days for infection detection"] [:td] [:td (:mean-days-to-detect-infected params)]])
+    [:tr [:td "Test general population"] [:td] [:td (str (:test-everyone? params))]]
+    (when (:test-everyone? params)
+      [:tr [:td "No. of tests per 1M people"] [:td] [:td (:tests-per-1m-people params)]])]])
 
 (defn saved-simulations
   [sims]
