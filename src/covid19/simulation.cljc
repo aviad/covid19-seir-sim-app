@@ -66,6 +66,18 @@
   [g node]
   (= :S (loom.attr/attr g node :state)))
 
+(defn- exposed?
+  [g node]
+  (= :E (loom.attr/attr g node :state)))
+
+(defn- EI?
+  [g node]
+  (= :EI (loom.attr/attr g node :state)))
+
+(defn- infected?
+  [g node]
+  (= :I (loom.attr/attr g node :state)))
+
 (defnp random-infect
   "randomly infect nodes"
   [g n]
@@ -172,12 +184,19 @@
   {:pre (:test-everyone? g)}
   [g]
   (let [{:keys [tests-per-1m-people n-nodes]} g
-        can-be-tested (fn [node] (nil? (loom.attr/attr g node :TP)))
-        testable-nodes (filterv can-be-tested (nodes-by-state g :I))
+        can-be-tested (fn [node] (and (or (susceptible? g node)
+                                          (exposed? g node))
+                                  (nil? (loom.attr/attr g node :TP))))
+        testable-nodes (filterv can-be-tested (nodes g))
         n-tests-per-step (Math/round
                           (/ tests-per-1m-people (/ 1000000 n-nodes) 5))
-        n-tests-per-step (min n-tests-per-step (count testable-nodes))]
-    (take n-tests-per-step (distinct (repeatedly #(rand-nth testable-nodes))))))
+        n-tests-per-step (min n-tests-per-step (count testable-nodes))
+
+        sampled-nodes (if (>= (* 10 n-tests-per-step) (count testable-nodes))
+                        (take n-tests-per-step (shuffle testable-nodes))
+                        )]
+    (filter #(or (infected? g %) (EI? g %) (exposed? g %))
+            (take n-tests-per-step (distinct (repeatedly #(rand-nth testable-nodes)))))))
 
 (defnp testing-step
   [g]

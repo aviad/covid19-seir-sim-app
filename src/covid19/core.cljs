@@ -276,7 +276,7 @@
                                :div
                                :div.greyedOut)]
      [possibly-greyed-div
-      [:input {:type :range :min 0 :max 5000 :name "slider"
+      [:input {:type :range :min 0 :max 100000 :name "slider"
                :value @(rf/subscribe [:tests-per-1m-people])
                :step 10
                :on-change #(when @(rf/subscribe [:test-everyone?])
