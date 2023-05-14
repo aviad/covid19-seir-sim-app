@@ -335,7 +335,7 @@
                embed-bars-id (str "#embed-bars-" display-idx)]]
      ^{:key (str "saved-simulation-" display-idx)}
      [:div
-      [:h3 "Simulation " display-idx]
+      [:h3 {:id (str "Simulation-" display-idx)} "Simulation " display-idx]
       (params-table sim)
       [:figure.fullwidth
        [(keyword (str "div" embed-lines-id))]
