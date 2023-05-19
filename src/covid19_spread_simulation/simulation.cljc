@@ -1,9 +1,8 @@
-(ns covid19.simulation
+(ns covid19-spread-simulation.simulation
   (:require [loom.attr]
             [loom.graph :refer [nodes]]
             #?(:cljs ["jstat" :as jstat]
                :clj [incanter.distributions :as dist])
-            #?(:cljs [covid19.plot-geom :as plot])
             [taoensso.tufte :as tufte :refer (defnp p profiled profile)]))
 
 ;; To understand what is going on, start from `simulation-step` and `initialize`
