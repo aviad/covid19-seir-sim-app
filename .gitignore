@@ -1,23 +1,24 @@
-.shadow-cljs/
-package-lock.json
-package.json
-shadow-cljs.edn
-**/.idea/**/*
-!.idea/codeStyleSettings.xml
+/out/
+/resources/public/js/compiled/
+/target/
+/*-init.clj
+/*.log
+
+# Leiningen
+/.lein-*
+/.nrepl-port
+
+# Node.js dependencies
+/node_modules/
+
+# shadow-cljs cache, port files
+/.shadow-cljs/
 *.iml
 *.log
-.nrepl-port
-pom.xml
-pom.xml.asc
 *.jar
 .lein-deps-sum
 .lein-repl-history
 .lein-plugins/
 .lein-failures
-out/
-target/
 compiled/
-resources/public/js/
-node_modules/
-build/
 *~

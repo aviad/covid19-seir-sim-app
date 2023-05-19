@@ -1,5 +1,5 @@
-(ns covid19.plot-sim
-  (:require [covid19.simulation :refer [graph->counts]]))
+(ns covid19-spread-simulation.plot-sim
+  (:require [covid19-spread-simulation.simulation :refer [graph->counts]]))
 
 (def config
   "Tufte-similar look."

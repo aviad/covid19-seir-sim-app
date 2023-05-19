@@ -1,187 +1,192 @@
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>Modeling COVID-19</title>
-    <link rel="stylesheet" href="https://www.unpkg.com/tufte-css@1.7.2/tufte.css"/>
-    <link rel="icon" href="data:;base64,iVBORw0KGgo="> <!-- disable favicon.ico -->
-    <style type="text/css">
-     .monospaced {
-         display:inline-block;
-         font-family:Monospace;
-	 font-size:15px;
-	 font-weight:bold;
-	 text-decoration:none;
-     }
-     .myButton {
-         margin-top:4px;
-         background-color:#fffff8;
-	 border-radius:6px;
-	 /* border:1px solid #333333; */
-	 display:inline-block;
-	 cursor:pointer;
-         color:#333333;
-	 font-family:Monospace;
-	 font-size:22px;
-	 font-weight:bold;
-         padding:0px 6px 6px;
-	 text-decoration:none;
-         align-items: center;
-         justify-content: center;
-         justify-self: center;
-     }
-     .send-icon {
-         position:relative;
-         top:6px;
-     }
-     .myButton:hover {
-	 background:linear-gradient(to bottom, #aaaaaa 5%, #cccccc 100%);
-	 background-color:#aaaaaa;
-     }
-     .myButton:active {
-	 position:relative;
-	 top:1px;
-     }
-     .invisible {
-         color:#fffff8;
-     }
-     .greyedOut {
-         opacity:0.3;
-     }
-    </style>
-  </head>
-  <body>
-      <article id="app">
-          <h1>Modeling COVID-19 on a network: super-spreaders, testing and containment
-          </h1>
-          <p class="subtitle">Simulate COVID-19 spread according to the
-              <a href="https://www.medrxiv.org/content/10.1101/2020.04.30.20081828v1" target="_blank" rel="noreferrer noopener">article by Reich et. al.
-              </a>
-          </p>
-          <p>
-              <strong>TL;DR:
-                  <a href="#simulation">Go straight to running the simulation
-                  </a>
-              </strong>
-          </p>
-          <section id="general-intro">
-              <h2>Introduction
-              </h2>
-              <p>
-                  <span class="newthought">The article
-                  </span>
-                  <label for="article-bib" class="margin-toggle sidenote-number">
-                  </label>
-                  <input type="checkbox" id="article-bib" class="margin-toggle">
-                  <span class="sidenote">Reich, O., Shalev, G., and Kalvari, T. 2020. Modeling COVID-19 on a network: super-spreaders, testing and containment.
-                      <a href="https://dx.doi.org/10.1101/2020.04.30.20081828">https://dx.doi.org/10.1101/2020.04.30.20081828
-                      </a>.
-                  </span>
-                  <span class="newthought"> models the spread of covid-19
-                  </span> using an SEIR agent-based model on a graph, taking into account several important real-life attributes of covid-19: Super-spreaders, realistic epidemiological parameters of the disease, testing and quarantine policies. The findings indicate that mass-testing is much less effective than testing the symptomatic and contact tracing, and some blend of these with social distancing is required to get suppression.
-              </p>
-              <p>This page allows you to experiment with this simulation, adjusting some of its parameters. It is creating a
-                  <strong>unique
-                  </strong> network just like the one in the
-                  <a href="https://www.medrxiv.org/content/10.1101/2020.04.30.20081828v1" target="_blank" rel="noreferrer noopener">article
-                  </a>, and simulates the disease spreading on that network.
-              </p>
-              <p>Try running the simulation several times with the same parameters, to witness the similarities and differences due to randominzation. Then, try adjusting the parameters to investigate different strategies and see their effect on disease spread, seeing which ones lead to containment, and which ones just infect a substantial share of the population.
-              </p>
-              <p>For details, read the article, or
-                  <a href="https://github.com/ofir-reich/seir-graph">read the original python code
-                  </a>, or
-                  <a href="https://github.com/aviad/covid19-seir-sim-app/issues">open an issue on github for this webpage
-                  </a>.
-              </p>
-          </section>
-          <section id="simulation">
-              <h2>Running the simulation
-              </h2>
-              <p>
-                  <span class="newthought">To run this simulation
-                  </span> simply adjust the parameters, and press the
-                  <a href="#adjusting" class="monospaced">Run
-                  </a> button below. This will cause a
-                  <strong>unique
-                  </strong> random graph to be generated on your browser, and a random simulation will take place. The simulation state will be displayed on updating graphs in the
-                  <a href="#Results">results section
-                  </a>. Scroll down to see previous simulations you ran.
-              </p>
-              <h3 id="adjusting" class="greyedOut">Adjustable simulation parameters
-              </h3>
-              <div class="greyedOut">
-                  <input type="range" min="500" max="20000" step="10" class="slider" value="5000">Number of nodes: 5000
-              </div>
-              <div class="greyedOut">
-                  <input type="range" min="0.1" max="1" name="slider" step="0.01" value="0.2">Gamma: 0.2
-              </div>
-              <div class="greyedOut">
-                  <input type="range" min="2" max="30" name="slider" step="1" value="20">Mean degree: 20
-              </div>
-              <div class="greyedOut">
-                  <input type="checkbox" name="test-symptomatic">
-                  <label for="test-symptomatic">Test symptomatic?
-                  </label>
-              </div>
-              <div class="greyedOut">
-                  <input type="range" min="0" max="25" name="slider" step="0.5" value="7">Means days for infection detection: 7
-              </div>
-              <div class="greyedOut">
-                  <input type="checkbox" name="test-everyone">
-                  <label for="test-everyone">Test general population?
-                  </label>
-              </div>
-              <div class="greyedOut">
-                  <input type="range" min="0" max="5000" name="slider" step="10" value="2550">Daily tests per 1M people: 2550
-              </div>
-              <p>
-                  <label for="icon-credit" class="margin-toggle">&amp;#8853;
-                  </label>
-                  <input type="checkbox" id="icon-credit" class="margin-toggle">
-                  <span class="marginnote">"send" icon by
-                      <a href="https://www.brandeps.com/">https://www.brandeps.com/
-                      </a>, licensed under
-                      <a href="https://creativecommons.org/licenses/by-sa/4.0/">https://creativecommons.org/licenses/by-sa/4.0/
-                      </a>
-                  </span>
-                  <span href="#Results" height="19em" id="run-sim-button" class="myButton">Run
-                      <img src="https://metta-code.s3.eu-central-1.amazonaws.com/send.svg" height="26em" class="send-icon">
-                  </span>
-              </p>
-          </section>
-          <section id="Results">
-              <h2>Results
-              </h2>
-              <div>
-                  <a href="#Results">clear all results
-                  </a>
-              </div>
-              <div>
-              </div>
-          </section>
-          <section id="epilogue">
-              <h2>Epilogue
-              </h2>
-              <p>
-                  <span class="newthought">This webpage was created
-                  </span>with
-                  <a href="https://clojurescript.org/">clojurescript
-                  </a>,
-                  <a href="https://github.com/Day8/re-frame">re-frame
-                  </a>,
-                  <a href="https://vega.github.io/vega-lite/">vega-lite
-                  </a>,
-                  <a href="https://shadow-cljs.org/">shadow-cljs
-                  </a> and
-                  <a href="https://github.com/Day8/re-frame">tufte-css
-                  </a>.
-              </p>
-              <p>It brought me joy.
-              </p>
-          </section>
-      </article>
-      <script src="js/client.js"></script>
-      <!-- <script src="https://metta-code.s3.eu-central-1.amazonaws.com/js/client.js"></script> -->
-  </body>
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset='utf-8'>
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Modeling COVID-19</title>
+        <link rel="stylesheet" href="https://www.unpkg.com/tufte-css@1.7.2/tufte.css"/>
+        <link rel="icon" href="data:;base64,iVBORw0KGgo="> <!-- disable favicon.ico -->
+        <style type="text/css">
+         .monospaced {
+             display:inline-block;
+             font-family:Monospace;
+	     font-size:15px;
+	     font-weight:bold;
+	     text-decoration:none;
+         }
+         .myButton {
+             margin-top:4px;
+             background-color:#fffff8;
+	     border-radius:6px;
+	     /* border:1px solid #333333; */
+	     display:inline-block;
+	     cursor:pointer;
+             color:#333333;
+	     font-family:Monospace;
+	     font-size:22px;
+	     font-weight:bold;
+             padding:0px 6px 6px;
+	     text-decoration:none;
+             align-items: center;
+             justify-content: center;
+             justify-self: center;
+         }
+         .send-icon {
+             position:relative;
+             top:6px;
+         }
+         .myButton:hover {
+	     background:linear-gradient(to bottom, #aaaaaa 5%, #cccccc 100%);
+	     background-color:#aaaaaa;
+         }
+         .myButton:active {
+	     position:relative;
+	     top:1px;
+         }
+         .invisible {
+             color:#fffff8;
+         }
+         .greyedOut {
+             opacity:0.3;
+         }
+        </style>
+    </head>
+    <body>
+        <noscript>
+            covid19-spread-simulation is a JavaScript app. Please enable JavaScript to continue.
+        </noscript>
+        <div id="app">
+            <article>
+                <h1>Modeling COVID-19 on a network: super-spreaders, testing and containment
+                </h1>
+                <p class="subtitle">Simulate COVID-19 spread according to the
+                    <a href="https://www.medrxiv.org/content/10.1101/2020.04.30.20081828v1" target="_blank" rel="noreferrer noopener">article by Reich et. al.
+                    </a>
+                </p>
+                <p>
+                    <strong>TL;DR:
+                        <a href="#simulation">Go straight to running the simulation
+                        </a>
+                    </strong>
+                </p>
+                <section id="general-intro">
+                    <h2>Introduction
+                    </h2>
+                    <p>
+                        <span class="newthought">The article
+                        </span>
+                        <label for="article-bib" class="margin-toggle sidenote-number">
+                        </label>
+                        <input type="checkbox" id="article-bib" class="margin-toggle">
+                        <span class="sidenote">Reich, O., Shalev, G., and Kalvari, T. 2020. Modeling COVID-19 on a network: super-spreaders, testing and containment.
+                            <a href="https://dx.doi.org/10.1101/2020.04.30.20081828">https://dx.doi.org/10.1101/2020.04.30.20081828
+                            </a>.
+                        </span>
+                        <span class="newthought"> models the spread of covid-19
+                        </span> using an SEIR agent-based model on a graph, taking into account several important real-life attributes of covid-19: Super-spreaders, realistic epidemiological parameters of the disease, testing and quarantine policies. The findings indicate that mass-testing is much less effective than testing the symptomatic and contact tracing, and some blend of these with social distancing is required to get suppression.
+                    </p>
+                    <p>This page allows you to experiment with this simulation, adjusting some of its parameters. It is creating a
+                        <strong>unique
+                        </strong> network just like the one in the
+                        <a href="https://www.medrxiv.org/content/10.1101/2020.04.30.20081828v1" target="_blank" rel="noreferrer noopener">article
+                        </a>, and simulates the disease spreading on that network.
+                    </p>
+                    <p>Try running the simulation several times with the same parameters, to witness the similarities and differences due to randominzation. Then, try adjusting the parameters to investigate different strategies and see their effect on disease spread, seeing which ones lead to containment, and which ones just infect a substantial share of the population.
+                    </p>
+                    <p>For details, read the article, or
+                        <a href="https://github.com/ofir-reich/seir-graph">read the original python code
+                        </a>, or
+                        <a href="https://github.com/aviad/covid19-seir-sim-app/issues">open an issue on github for this webpage
+                        </a>.
+                    </p>
+                </section>
+                <section id="simulation">
+                    <h2>Running the simulation
+                    </h2>
+                    <p>
+                        <span class="newthought">To run this simulation
+                        </span> simply adjust the parameters, and press the
+                        <a href="#adjusting" class="monospaced">Run
+                        </a> button below. This will cause a
+                        <strong>unique
+                        </strong> random graph to be generated on your browser, and a random simulation will take place. The simulation state will be displayed on updating graphs in the
+                        <a href="#Results">results section
+                        </a>. Scroll down to see previous simulations you ran.
+                    </p>
+                    <h3 id="adjusting" class="greyedOut">Adjustable simulation parameters
+                    </h3>
+                    <div class="greyedOut">
+                        <input type="range" min="500" max="20000" step="10" class="slider" value="5000">Number of nodes: 5000
+                    </div>
+                    <div class="greyedOut">
+                        <input type="range" min="0.1" max="1" name="slider" step="0.01" value="0.2">Gamma: 0.2
+                    </div>
+                    <div class="greyedOut">
+                        <input type="range" min="2" max="30" name="slider" step="1" value="20">Mean degree: 20
+                    </div>
+                    <div class="greyedOut">
+                        <input type="checkbox" name="test-symptomatic">
+                        <label for="test-symptomatic">Test symptomatic?
+                        </label>
+                    </div>
+                    <div class="greyedOut">
+                        <input type="range" min="0" max="25" name="slider" step="0.5" value="7">Means days for infection detection: 7
+                    </div>
+                    <div class="greyedOut">
+                        <input type="checkbox" name="test-everyone">
+                        <label for="test-everyone">Test general population?
+                        </label>
+                    </div>
+                    <div class="greyedOut">
+                        <input type="range" min="0" max="5000" name="slider" step="10" value="2550">Daily tests per 1M people: 2550
+                    </div>
+                    <p>
+                        <label for="icon-credit" class="margin-toggle">&amp;#8853;
+                        </label>
+                        <input type="checkbox" id="icon-credit" class="margin-toggle">
+                        <span class="marginnote">"send" icon by
+                            <a href="https://www.brandeps.com/">https://www.brandeps.com/
+                            </a>, licensed under
+                            <a href="https://creativecommons.org/licenses/by-sa/4.0/">https://creativecommons.org/licenses/by-sa/4.0/
+                            </a>
+                        </span>
+                        <span href="#Results" height="19em" id="run-sim-button" class="myButton">Run
+                            <img src="https://metta-code.s3.eu-central-1.amazonaws.com/send.svg" height="26em" class="send-icon">
+                        </span>
+                    </p>
+                </section>
+                <section id="Results">
+                    <h2>Results
+                    </h2>
+                    <div>
+                        <a href="#Results">clear all results
+                        </a>
+                    </div>
+                    <div>
+                    </div>
+                </section>
+                <section id="epilogue">
+                    <h2>Epilogue
+                    </h2>
+                    <p>
+                        <span class="newthought">This webpage was created
+                        </span>with
+                        <a href="https://clojurescript.org/">clojurescript
+                        </a>,
+                        <a href="https://github.com/Day8/re-frame">re-frame
+                        </a>,
+                        <a href="https://vega.github.io/vega-lite/">vega-lite
+                        </a>,
+                        <a href="https://shadow-cljs.org/">shadow-cljs
+                        </a> and
+                        <a href="https://github.com/Day8/re-frame">tufte-css
+                        </a>.
+                    </p>
+                    <p>It brought me joy.
+                    </p>
+                </section>
+            </article>
+        </div>
+        <script src="/js/compiled/app.js"></script>
+    </body>
 </html>
