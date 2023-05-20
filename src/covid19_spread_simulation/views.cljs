@@ -5,8 +5,7 @@
    [covid19-spread-simulation.subs :as subs]
    [covid19-spread-simulation.plot-sim :as plot-sim]
    [covid19-spread-simulation.simulation :as simulation]
-   ["vega-embed" :as vega]
-   ))
+   ["vega-embed" :as vega]))
 
 (defn hidden-run-simulation
   []
@@ -20,7 +19,7 @@
                                          (repeat (count history))))
               updated-history (conj history step-results)]
           (re-frame/dispatch [::events/sim-state-change
-                        {:g new-state :history updated-history}]))
+                              {:g new-state :history updated-history}]))
         (re-frame/dispatch [::events/save-simulation sim-state])))))
 
 (defn introduction
@@ -70,8 +69,7 @@
                          :value @(re-frame/subscribe [::subs/n-nodes])
                          :step 10
                          :on-change #(re-frame/dispatch
-                                      [::events/n-nodes-change (-> % .-target .-value)])
-                         }]
+                                      [::events/n-nodes-change (-> % .-target .-value)])}]
     "Number of nodes: " @(re-frame/subscribe [::subs/n-nodes])]
    [:div [:input {:type :range :min 0.1 :max 1 :name "slider"
                   :value @(re-frame/subscribe [::subs/gamma])
@@ -99,9 +97,9 @@
                :value @(re-frame/subscribe [::subs/mean-days-to-detect-infected])
                :step 0.5
                :on-change #(when @(re-frame/subscribe [::subs/test-symptomatic?])
-                               (re-frame/dispatch
-                                [::events/mean-days-to-detect-infected-change
-                                 (-> % .-target .-value)]))}]
+                             (re-frame/dispatch
+                              [::events/mean-days-to-detect-infected-change
+                               (-> % .-target .-value)]))}]
       "Means days for infection detection: " @(re-frame/subscribe [::subs/mean-days-to-detect-infected])])
    [:div
     [:input {:type :checkbox :id "test-everyone"
@@ -117,8 +115,8 @@
                :value @(re-frame/subscribe [::subs/tests-per-1m-people])
                :step 10
                :on-change #(when @(re-frame/subscribe [::subs/test-everyone?])
-                            (re-frame/dispatch
-                             [::events/tests-per-1m-people-change (-> % .-target .-value)]))}]
+                             (re-frame/dispatch
+                              [::events/tests-per-1m-people-change (-> % .-target .-value)]))}]
       "Daily tests per 1M people: "
       @(re-frame/subscribe [::subs/tests-per-1m-people])])
    [:p

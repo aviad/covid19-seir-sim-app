@@ -4,8 +4,7 @@
    [covid19-spread-simulation.db :as db]
    [day8.re-frame.tracing :refer-macros [fn-traced]]
    [clojure.edn :as edn]
-   [covid19-spread-simulation.simulation :refer [initialize]]
-   ))
+   [covid19-spread-simulation.simulation :refer [initialize]]))
 
 (re-frame/reg-event-db ;; sets up initial application state
  ::initialize-db       ;; usage:  (dispatch [:initialize-db])

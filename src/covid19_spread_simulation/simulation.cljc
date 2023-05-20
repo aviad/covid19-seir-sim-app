@@ -34,7 +34,7 @@
           (<= (dec mean-degree) (* 2 (apply mean %)) (inc mean-degree))]}
   (let [min-degree 2                 ;; min-degree is 2 HARD-CODED
         Xs (for [_ (range nodes-n)]
-             (dec (/ 1 (Math/pow (rand) gamma))) )
+             (dec (/ 1 (Math/pow (rand) gamma))))
         m (/ (reduce + Xs) (count Xs))]
     (for [x Xs
           :let [y (/ x m)
@@ -145,8 +145,7 @@
         ]
     (-> g
         (infect Is prob-infected-by-I)
-        (infect EIs prob-infected-by-EI))
-    ))
+        (infect EIs prob-infected-by-EI))))
 
 (defnp incubation-step
   "incubation_step (E -> EI -> I):
@@ -185,15 +184,14 @@
   (let [{:keys [tests-per-1m-people n-nodes]} g
         can-be-tested (fn [node] (and (or (susceptible? g node)
                                           (exposed? g node))
-                                  (nil? (loom.attr/attr g node :TP))))
+                                      (nil? (loom.attr/attr g node :TP))))
         testable-nodes (filterv can-be-tested (nodes g))
         n-tests-per-step (Math/round
                           (/ tests-per-1m-people (/ 1000000 n-nodes) 5))
         n-tests-per-step (min n-tests-per-step (count testable-nodes))
 
         sampled-nodes (if (>= (* 10 n-tests-per-step) (count testable-nodes))
-                        (take n-tests-per-step (shuffle testable-nodes))
-                        )]
+                        (take n-tests-per-step (shuffle testable-nodes)))]
     (filter #(or (infected? g %) (EI? g %) (exposed? g %))
             (take n-tests-per-step (distinct (repeatedly #(rand-nth testable-nodes)))))))
 
@@ -203,7 +201,7 @@
                             (detect-infected g))
         ;; TODO: general population testing
         detected-from-population (when (:test-everyone? g)
-                                           (detect-from-population g))]
+                                   (detect-from-population g))]
     (concat detected-infected detected-from-population)))
 
 (defnp testing-and-quarantine-step

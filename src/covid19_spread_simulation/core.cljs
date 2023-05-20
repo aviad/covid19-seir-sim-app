@@ -4,9 +4,7 @@
    [re-frame.core :as re-frame]
    [covid19-spread-simulation.events :as events]
    [covid19-spread-simulation.views :as views]
-   [covid19-spread-simulation.config :as config]
-   ))
-
+   [covid19-spread-simulation.config :as config]))
 
 (defn dev-setup []
   (when config/debug?
@@ -17,8 +15,7 @@
   (let [root-el (.getElementById js/document "app")]
     (rdom/unmount-component-at-node root-el)
     ;; (rdom/render [views/main-panel] root-el)
-    (rdom/render [views/ui] root-el)
-    ))
+    (rdom/render [views/ui] root-el)))
 
 (defn init []
   (re-frame/dispatch-sync [::events/initialize-db])

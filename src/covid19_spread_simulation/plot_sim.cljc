@@ -33,8 +33,7 @@
       :field :count
       :type :quantitative
       :axis {:title "population"}
-      :stack :normalize
-      }
+      :stack :normalize}
      :x {:field :day :type :ordinal}
      :order {:field :order :type :quantitative}
      :color
@@ -59,8 +58,7 @@
                :color
                {:field :state
                 :type :nominal
-                :scale color-scale}}}
-        ]
+                :scale color-scale}}}]
     (#?(:cljs clj->js
         :clj identity)
      {:$schema "https://vega.github.io/schema/vega-lite/v4.json"
