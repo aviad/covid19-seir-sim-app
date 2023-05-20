@@ -23,9 +23,9 @@
                         {:g new-state :history updated-history}]))
         (re-frame/dispatch [::events/save-simulation sim-state])))))
 
-(defn general-intro
+(defn introduction
   []
-  [:section#general-intro
+  [:section#introduction
    [:h2 "Introduction"]
    [:p [:span.newthought "The article"]
     [:label.margin-toggle.sidenote-number {:for :article-bib}]
@@ -157,7 +157,6 @@
     (when (:test-everyone? params)
       [:tr [:td "No. of daily tests per 1M people"] [:td] [:td (:tests-per-1m-people params)]])]])
 
-
 (defn saved-simulations
   [sims]
   [:div
@@ -187,7 +186,7 @@
 
 (defn results
   []
-  [:section#Results
+  [:section#results
    [:h2 "Results "]
    [:div [:a {:href "#Results" :on-click #(re-frame/dispatch [::events/clear-results])} "clear all results"]]
    ;; Currently running simulation
@@ -241,7 +240,7 @@
          :rel "noreferrer noopener"}
      "article by Reich et. al."]]
    [:p [:strong "TL;DR: " [:a {:href "#simulation"} "Go straight to running the simulation"]]]
-   [general-intro]
+   [introduction]
    [simulation]
    [results]
    [epilogue]])
